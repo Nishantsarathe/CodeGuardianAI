@@ -1,0 +1,60 @@
+# =====================================================
+# CodeGuardian AI — Docker Compose
+# Run from the PROJECT ROOT: docker compose -f docker/docker-compose.yml up --build
+# =====================================================
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: codeguardian-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: codeguardian-backend
+    depends_on:
+      ollama:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - APP_ENV=${APP_ENV:-production}
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads_data:/app/uploads
+      - logs_data:/app/logs
+      - chroma_data:/app/chroma_data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: codeguardian-frontend
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  uploads_data:
+  logs_data:
+  chroma_data:

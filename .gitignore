@@ -1,0 +1,55 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.coverage
+coverage/
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+build/
+.npm
+.eslintcache
+.turbo
+
+# Logs & runtime
+logs/
+*.log
+uploads/
+chroma_data/
+*.db
+*.sqlite
+*.sqlite3
+*.tgz
+*.tar.gz.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / tooling
+.idea/
+.vscode/
+*.swp
+.claude/
+
+# Docker
+docker-compose.override.yml

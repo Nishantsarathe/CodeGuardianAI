@@ -1,0 +1,16 @@
+node_modules
+.next
+__pycache__
+*.pyc
+.git
+.gitignore
+.env
+.env.local
+logs
+uploads
+chroma_data
+.venv
+venv
+tests
+docs
+*.md

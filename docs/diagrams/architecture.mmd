@@ -1,0 +1,36 @@
+graph TB
+  subgraph Frontend
+    UI[Next.js 15 UI]
+  end
+  subgraph Backend
+    API[FastAPI]
+    Auth[JWT + RBAC]
+    Coord[Coordinator Agent]
+  end
+  subgraph Agents
+    CR[Code Review]
+    SEC[Security]
+    BUG[Bug Detection]
+    FIX[Auto Fix]
+    DOC[Documentation]
+    REF[Refactoring]
+    TST[Test Generator]
+    UML[UML Agent]
+    DEP[Dependency]
+  end
+  subgraph Services
+    LLM[Ollama LLM]
+    VEC[ChromaDB]
+    FS[Filesystem MCP]
+    GH[GitHub MCP]
+    SQL[SQLite MCP]
+  end
+  UI -->|REST/WS| API
+  API --> Auth
+  API --> Coord
+  Coord --> CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP
+  CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP --> LLM
+  CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP --> VEC
+  CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP --> FS
+  CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP --> GH
+  CR & SEC & BUG & FIX & DOC & REF & TST & UML & DEP --> SQL

@@ -1,0 +1,8 @@
+flowchart LR
+  Agent[Agent] --> Client[MCP Client]
+  Client -->|stdio| FS[Filesystem MCP]
+  Client -->|http| GH[GitHub MCP]
+  Client -->|sql| SQL[SQLite MCP]
+  FS -->|reads/writes| Workspace[Project Workspace]
+  GH -->|clone, metadata| GitHub[github.com]
+  SQL -->|queries| DB[(SQLite)]

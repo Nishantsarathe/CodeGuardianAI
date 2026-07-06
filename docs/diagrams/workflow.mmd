@@ -1,0 +1,25 @@
+sequenceDiagram
+  participant U as User
+  participant F as Frontend
+  participant B as Backend
+  participant C as Coordinator
+  participant A as Agents
+  participant L as Ollama
+  U->>F: Upload repo
+  F->>B: POST /projects
+  B-->>F: project_id
+  F->>B: POST /analyses
+  B-->>F: analysis_id (queued)
+  B->>C: plan & dispatch
+  C->>A: run(code_review)
+  A->>L: prompt
+  L-->>A: response
+  A-->>C: findings
+  C->>A: run(security)
+  A->>L: prompt
+  L-->>A: response
+  A-->>C: findings
+  C-->>B: merged
+  B-->>F: status=completed
+  F->>B: GET /reports/{id}/bundle
+  B-->>F: zip
