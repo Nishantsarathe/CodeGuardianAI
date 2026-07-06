@@ -216,7 +216,7 @@ export default function UploadPage() {
         </div>
 
         <p className="text-center text-xs text-white/30">
-          You'll be redirected automatically when complete. Wave 1 (static) → Wave 2 (generative) → Patch.
+          You will be redirected automatically when complete. Wave 1 (static) → Wave 2 (generative)
         </p>
       </div>
     );
