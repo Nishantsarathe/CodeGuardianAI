@@ -1,297 +1,247 @@
-# 🛡️ CodeGuardian AI
-
-> **Autonomous Multi-Agent Code Review & Security Platform**
-
-[![CI](https://github.com/your-org/codeguardian-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/codeguardian-ai/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-
-CodeGuardian AI is a next-generation, autonomous multi-agent platform that combines the power of **GitHub Copilot + SonarQube + CodeRabbit + Snyk** into a single, locally-runnable application. It reviews code, detects bugs, finds security vulnerabilities, generates documentation, suggests refactoring, creates unit tests, and visualizes architecture — all powered by autonomous AI agents that collaborate to ship production-ready software.
-
-> Built for the **Kaggle AI Agents Intensive – Vibe Coding Capstone**.
+# 🛡️ CodeGuardian AI — Project Documentation
 
 ---
 
-## ✨ Highlights
+## 1. 🎯 The Problem
 
-- 🧠 **10 Autonomous AI Agents** collaborating through a Coordinator
-- 🔒 **Local-first** — runs entirely on Ollama (Gemma / Qwen) with no data leaving your machine
-- 🏛️ **Clean Architecture** — strict separation of Frontend, Backend, Agents, Services
-- 🎨 **Premium UI** — Glassmorphism, dark theme, Framer Motion animations
-- 📊 **Production Dashboards** — Security, Quality, Bugs, Architecture, Dependencies
-- 🐳 **One-command deploy** — `docker compose up` and you're running
-- 🧪 **Auto-generated tests, docs, UML, refactor plans, and Git patches**
+Modern codebases accumulate risk faster than teams can review it. A single pull request can simultaneously introduce a security hole, a subtle bug, a missed test, an undocumented breaking change, and a vulnerable dependency — and a human reviewer, however good, is optimizing for one lens at a time (usually "does this do what it says"). The result, in most real teams, is:
 
----
+- 🔓 **Security review is inconsistent.** It happens deeply on some PRs, not at all on others, and almost never on legacy code that "already works."
+- 🧹 **Static analysis tools are narrow.** A linter catches style. A SAST tool catches a fixed rule-set of vulnerabilities. Neither explains *why* something matters or proposes a fix in context.
+- 📚 **Documentation and tests lag the code.** They're the first things cut under deadline pressure, and nobody owns keeping them current.
+- 📦 **Dependency risk is invisible until it's an incident.** Most teams only look at their dependency tree when a CVE makes the news.
+- 🧠 **A single generalist reviewer (human or AI) has to context-switch** across all of the above, which measurably degrades depth on each one — the same failure mode that makes single-threaded code review slow and inconsistent in the first place.
 
-## 🚀 Features
-
-### Multi-Agent System
-| Agent | Role |
-|-------|------|
-| **Coordinator** | Plans, delegates, validates, merges |
-| **Code Review** | Quality, complexity, code smells, scoring |
-| **Security** | SQLi, XSS, CVSS scoring, secret scanning |
-| **Bug Detection** | Static + AI logic error hunting |
-| **Auto Fix** | Patches with diff + explanation |
-| **Documentation** | README, API, architecture, dev guides |
-| **Refactoring** | SOLID, design patterns, modularization |
-| **Test Generator** | Pytest unit + integration tests |
-| **UML** | Class, sequence, component, dependency diagrams |
-| **Dependency** | Vulnerability & upgrade analysis |
-
-### Supported Inputs
-- 🐙 GitHub Repository (URL or clone)
-- 📦 ZIP Project
-- 📂 Local Folder
-- 📄 Single Source File
-
-### Supported Languages
-Python • Java • JavaScript • TypeScript • C • C++ • C# • Go • Rust
-
-### Output Artifacts
-- README.md
-- Markdown / HTML / PDF Reports
-- Architecture & UML Diagrams (Mermaid)
-- Unit + Integration Tests (Pytest)
-- Git Patch (`.patch`) with diff
-- Documentation Suite
-- Health Score (0–100)
+> **Problem statement:** given an arbitrary codebase (upload, ZIP, GitHub URL, or folder), produce a trustworthy, multi-dimensional health assessment — security, bugs, code quality, tests, docs, architecture, dependencies — fast enough to fit into a normal review workflow, with actionable findings and auto-generated fixes, not just a wall of warnings.
 
 ---
 
-## 🏗️ Architecture
+## 2. 💡 The Solution
+
+**CodeGuardian AI** is a **local-first, multi-agent code intelligence platform**. You point it at a project; it fans the work out to **9 specialized AI agents** that each own one dimension of code health, run them in parallel waves, merge their findings into a single weighted health score, and surface everything through a dashboard, a chat interface grounded in your actual code (RAG), and exportable reports.
+
+> 🎯 **Core design goal:** treat code review the way a real engineering org treats it — as several distinct expert disciplines working concurrently, not one generalist skimming everything once.
+
+---
+
+## 3. 🧭 Design Principles
+
+| # | Principle | Why it matters |
+|---|---|---|
+| 1️⃣ | **Specialization over generalization** | A security agent that only thinks about CWEs/CVSS is more reliable than one prompt trying to be a security reviewer, a linter, and a technical writer simultaneously. |
+| 2️⃣ | **Parallelism as a first-class constraint** | The orchestration layer is explicitly built around wave-based concurrency — sequential agent execution doesn't scale to real repositories. |
+| 3️⃣ | **Local-first / self-hosted by default** | The LLM layer runs against a local **Ollama** instance — code never has to leave the machine/network it's running on. |
+| 4️⃣ | **Fail fast, not silently slow** | Every LLM-dependent path checks backend reachability upfront with a short, cached timeout, instead of letting dozens of calls independently retry against a full timeout. |
+| 5️⃣ | **Least privilege by default** | New accounts start as read-only viewers; role elevation is never client-controlled — only an explicit admin action can grant it. |
+| 6️⃣ | **Findings must be groundable and actionable** | Every finding carries file/line context; RAG chat is grounded in the project's own embedded source, not general knowledge. |
+| 7️⃣ | **Everything server-side, verifiable** | Role checks, source validation, zip-slip protection, and rate limiting all live in the backend — never trusted from the client. |
+
+---
+
+## 4. 🤖 Why Multi-Agent Instead of a Single AI
+
+A single LLM call asked to *"review this code for everything"* has structural weaknesses that a multi-agent design directly addresses:
+
+| ⚠️ Failure mode of a single generalist call | ✅ How the multi-agent design fixes it |
+|---|---|
+| **Attention dilution** — one prompt covering security + bugs + docs + tests + architecture spreads the model's attention thin. | Each agent has a narrow, dedicated prompt and only that dimension's context — depth instead of width. |
+| **No parallelism** — one long generalist call is one long serial wait. | 9 agents run as **2 concurrent waves**, cutting wall-clock time from `N × T` to `max(T_wave1, T_wave2) + T_auto_fix`. |
+| **Conflated, unstructured output** — hard to score, store, filter, or feed into a dashboard. | Each agent returns a typed `AgentResult` (findings, summary, confidence) the orchestrator can persist, weight, and aggregate. |
+| **No separation of finding vs. fixing** — a model doing both at once tends to do a mediocre job of each. | **Auto-Fix** is a dedicated, later-wave agent that only runs after Wave 1's findings exist. |
+| **One point of failure** — if the single call times out or hallucinates, the whole review is gone. | If one agent fails, the others still return — graceful degradation, not total loss. |
+
+⚖️ **Trade-off, accepted deliberately:** multi-agent orchestration costs more total compute than one call and needs its own coordination layer (waves, merging, scoring) — in exchange for depth, structure, and real wall-clock speed through concurrency.
+
+---
+
+## 5. 🏗️ Multi-Agent Architecture
+
+### 5.1 The Nine Agents 🧩
+
+| 🤖 Agent | 🎯 Responsibility |
+|---|---|
+| 🧭 **Coordinator** | Validates the payload, builds the execution plan, produces the top-level meta-summary used for scoring. |
+| 👀 **Code Review** | General code-quality issues — style, complexity, maintainability. |
+| 🔐 **Security** | Vulnerability detection with CWE/CVSS-style severity scoring. |
+| 🐛 **Bug Detection** | Logic errors, edge cases, likely runtime failures. |
+| 📦 **Dependency** | Outdated/vulnerable packages, license and version risk. |
+| ♻️ **Refactor** | Structural improvement suggestions. |
+| 📄 **Documentation** | Generates/checks docs coverage. |
+| 🧪 **Test Generator** | Proposes missing test cases. |
+| 📐 **UML** | Extracts architecture/class/sequence relationships into diagrams. |
+| 🩹 **Auto-Fix** | Generates patches for issues found in Wave 1. |
+
+### 5.2 Wave-Based Execution ⚡ (the core orchestration idea)
 
 ```
-┌──────────────────────┐        ┌──────────────────────┐
-│   Next.js 15 Frontend│  ◀──▶  │  FastAPI Backend     │
-│   (ShadCN + Framer)  │  HTTP  │  (Python 3.11+)      │
-└──────────────────────┘        └──────────┬───────────┘
-                                            │
-                       ┌────────────────────┼─────────────────────┐
-                       │                    │                     │
-                  ┌────▼─────┐      ┌───────▼────────┐    ┌───────▼────────┐
-                  │  Agents  │      │   Services     │    │   MCP Servers  │
-                  │ (10x AI) │      │  LLM/VectorDB  │    │ FS / GH / SQL  │
-                  └────┬─────┘      └───────┬────────┘    └───────┬────────┘
-                       │                    │                     │
-                       └────────────────────┴─────────────────────┘
-                                            │
-                                ┌───────────▼────────────┐
-                                │   SQLite + ChromaDB    │
-                                └────────────────────────┘
+                              ⏱  T = 0
+                                │
+              ┌─────────────────┴─────────────────┐
+              │                                     │
+     🌊 WAVE 1 (parallel)                  🌊 WAVE 2 (parallel)
+     fast · static analysis                generative · independent
+     ┌──────────────────────┐               ┌──────────────────────┐
+     │ 👀 code_review        │               │ ♻️  refactor          │
+     │ 🔐 security           │               │ 📄 documentation      │
+     │ 🐛 bug                │               │ 🧪 test               │
+     │ 📦 dependency         │               │ 📐 uml                │
+     └──────────┬───────────┘               └──────────┬───────────┘
+                │                                       │
+                └───────────────────┬───────────────────┘
+                                     │
+                                     ▼
+                          🌊 WAVE 3 (dependent)
+                          patch · needs Wave 1 output
+                          ┌──────────────────────┐
+                          │ 🩹 auto_fix           │
+                          └──────────┬───────────┘
+                                     │
+                                     ▼
+                         📊 Merged Health Score + Findings
 ```
 
-The **Coordinator Agent** orchestrates the other nine agents, merges their outputs, and produces a unified **Repository Health Score**.
+Waves 1 and 2 have **no data dependency** on each other, so they execute **simultaneously**. Wave 3 (Auto-Fix) intentionally waits, because a good patch needs to know what's broken first.
+
+> 🚀 This concurrency structure is exactly where the **"3–5× faster than sequential"** claim in the product UI comes from — it's architecture, not a faster model.
+
+### 5.3 Merge & Scoring 📊
+
+Each agent returns a structured result (`findings[]`, `summary{}`, `confidence`). The orchestrator:
+
+1. 💾 Persists every finding to the database, tagged with the originating agent.
+2. 🧮 Computes a single weighted **health score (0–100)** from each agent's summary score, using per-category weights, with a security-driven fallback formula if no weighted scores are available.
+3. 🗂️ Stores everything against the `Analysis` record so the dashboard, reports, and chat all reference one consistent result set.
+
+### 5.4 Reliability Layer 🛟
+
+Before any wave runs, the orchestrator performs a single **cached, short-timeout reachability check** against the LLM backend (Ollama). If it's unreachable, the analysis fails **immediately** with a clear stored error — instead of every agent, across every file, independently retrying and silently compounding into a run that takes hours. ⏳➡️⚡
 
 ---
 
-## 🧰 Technology Stack
+## 6. 🔑 Key Concepts Used
 
-**Frontend** — Next.js 15, React 19, TypeScript, TailwindCSS, ShadCN UI, Framer Motion, Recharts
-**Backend** — Python 3.11, FastAPI, Uvicorn, Pydantic v2, SQLAlchemy 2
-**AI** — Ollama (Gemma 2 / Qwen 2.5 Coder), local-first inference
-**Data** — SQLite (relational), ChromaDB (vector embeddings)
-**Security** — JWT auth, bcrypt passwords, RBAC, rate limiting, audit log
-**Tooling** — Docker, Docker Compose, GitHub Actions CI
-
----
-
-## 📦 Installation
-
-### Prerequisites
-
-| Requirement | Version | Notes |
-|-------------|---------|-------|
-| Python | ≥ 3.11 | [python.org](https://www.python.org) |
-| Node.js | ≥ 20 | [nodejs.org](https://nodejs.org) |
-| Ollama | latest | [ollama.com](https://ollama.com) — local LLM runtime |
-| Docker (optional) | latest | For containerized deployment |
+- 🧩 **Agent specialization & typed contracts** — every agent implements a common `BaseAgent` interface and returns an `AgentResult`.
+- 🌊 **Concurrent orchestration (waves, not a DAG scheduler)** — a deliberately simple two-tier dependency model, because the real dependency structure of this problem is that simple.
+- 🔍 **RAG (Retrieval-Augmented Generation)** — AI Chat embeds project source into a vector store (Chroma) and grounds answers in retrieved code context.
+- 🔐 **RBAC (Role-Based Access Control)** — three roles (`viewer`, `reviewer`, `admin`); roles are never client-assignable except through an explicit admin action.
+- 📊 **Health scoring as weighted aggregation** — one number, meaningful because it's a principled combination of independently-produced agent scores.
+- 🖥️ **Local-first LLM inference (Ollama)** — a default + fallback model pair (`gemma2:2b` / `qwen2.5-coder:7b`).
+- ⚡ **Fail-fast reachability checks** — prevents cascading timeout compounding across many independent calls.
+- 🗜️ **Zip-slip-safe extraction** — uploaded archives validated against path traversal before extraction.
+- 🔑 **JWT-based auth with bcrypt password hashing.**
 
 ---
 
-## 🔑 Environment Variables
-
-Copy `.env.example` to `.env` and fill in every value:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `SECRET_KEY` | ✅ | 32-byte hex string — generate with `openssl rand -hex 32` |
-| `JWT_SECRET` | ✅ | 32-byte hex string — separate from `SECRET_KEY` |
-| `APP_ENV` | ✅ | `development` / `staging` / `production` |
-| `DATABASE_URL` | — | Default: `sqlite:///./codeguardian.db` |
-| `OLLAMA_BASE_URL` | — | Default: `http://localhost:11434` |
-| `OLLAMA_DEFAULT_MODEL` | — | Default: `gemma2:2b` |
-| `GITHUB_TOKEN` | — | Personal access token for private repo import |
-| `DEMO_ADMIN_PASSWORD` | — | Overrides the auto-generated dev admin password |
-
-> **Security note:** `SECRET_KEY` and `JWT_SECRET` default to random values if unset, but you should always set them explicitly so they persist across restarts.
-
----
-
-## 🚀 Running Locally
-
-### 1. Pull an Ollama model
-```bash
-ollama pull gemma2:2b
-# Or for higher quality:
-ollama pull qwen2.5-coder:7b
-```
-
-### 2. Clone & configure
-```bash
-git clone https://github.com/your-org/codeguardian-ai.git
-cd codeguardian-ai
-cp .env.example .env
-# Edit .env — at minimum set SECRET_KEY and JWT_SECRET
-```
-
-### 3. Backend
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-```
-
-### 4. Frontend (new terminal)
-```bash
-cd frontend
-npm install --legacy-peer-deps
-npm run dev
-```
-
-### 5. Open the app
-- UI: **http://localhost:3000**
-- API docs (dev only): **http://localhost:8000/docs**
-
-> **Demo login:** On first startup the backend prints the auto-generated admin credentials to the console log. Look for a line like `demo_user_seeded ... password_hint=CG-***`. You can also set `DEMO_ADMIN_PASSWORD` in your `.env`.
-
----
-
-## 🐳 Docker Setup
-
-```bash
-# Start everything (Ollama + Backend + Frontend)
-docker compose -f docker/docker-compose.yml up --build
-
-# Pull the model into the Ollama container (first run only)
-docker exec -it codeguardian-ollama ollama pull gemma2:2b
-```
-
-Open **http://localhost:3000**.
-
----
-
-## 🧪 Testing
-
-```bash
-# Backend
-cd backend
-pytest -v
-
-# Frontend
-cd frontend
-npm run test
-```
-
----
-
-## 📁 Folder Structure
+## 7. 🏛️ System Architecture
 
 ```
-codeguardian-ai/
-├── backend/                # FastAPI service
-│   ├── app/
-│   │   ├── agents/         # 10 AI agents
-│   │   ├── api/            # Routes, schemas, deps
-│   │   ├── core/           # Config, constants, exceptions, logging
-│   │   ├── db/             # SQLAlchemy models & session
-│   │   ├── mcp/            # MCP server integrations
-│   │   ├── security/       # JWT, RBAC, rate limiting
-│   │   ├── services/       # LLM, vector DB, reports, analysis runner
-│   │   └── utils/          # Filesystem helpers
-│   └── requirements.txt
-├── frontend/               # Next.js 15 application
-│   ├── app/                # App router pages
-│   ├── components/         # UI components
-│   ├── hooks/              # React hooks (auth, analysis)
-│   └── lib/                # API client, utils
-├── docker/                 # Dockerfiles & docker-compose
-├── docs/                   # Guides, diagrams, API docs (see docs/api.md)
-├── tests/                  # Test suites (backend + agents)
-├── scripts/                # start.sh / start.ps1 helpers
-├── .env.example            # Environment variable template
-├── LICENSE                 # MIT
-└── README.md
+┌────────────────────────────────────┐        ┌──────────────────────────────────────┐
+│  🖥️  FRONTEND (Next.js / React)     │  HTTP  │        ⚙️  BACKEND (FastAPI)           │
+│  📊 Dashboard  📤 Upload  💬 Chat    │◄──────►│  🔑 Auth  📁 Projects  🔬 Analyses     │
+│  🔐 Security   🐛 Bugs    📄 Docs    │        │  📤 Uploads  🤖 Agents  💬 Chat  👥 Users │
+│  📐 Architecture   📑 Reports        │        │  📑 Reports  📊 Dashboard             │
+└────────────────────────────────────┘        └───────────────────┬────────────────────┘
+                                                                    │
+                       ┌────────────────────────────────────────────┼─────────────────────────────┐
+                       │                                            │                              │
+              ┌────────▼─────────┐                       ┌──────────▼──────────┐        ┌──────────▼──────────┐
+              │  🗄️  SQLAlchemy    │                       │  🎛️  Analysis Runner  │        │  🧠 Vector Store      │
+              │  Users, Projects,  │                       │  wave scheduler,      │        │  (Chroma) — RAG       │
+              │  Findings, ...     │                       │  9 agents, LLM        │        │  embeddings of         │
+              └────────────────────┘                       │  reachability         │        │  uploaded code          │
+                                                             │  fail-fast check      │        └────────────────────────┘
+                                                             └──────────┬────────────┘
+                                                                        │
+                                                              ┌─────────▼──────────┐
+                                                              │  🦙 Ollama           │
+                                                              │  (local LLM)         │
+                                                              │  ⚡ gemma2:2b (fast)  │
+                                                              │  🐢 qwen2.5-coder    │
+                                                              │     (fallback)       │
+                                                              └──────────────────────┘
 ```
 
----
+**📥 Ingestion paths:** GitHub URL · ZIP upload (zip-slip protected) · folder path · single file — all normalized into one project representation before agents ever see it.
 
-## 📖 API Documentation
-
-Full API reference: [`docs/api.md`](docs/api.md)
-
-Interactive Swagger UI is available at `http://localhost:8000/docs` in development mode. In production (`APP_ENV=production`) the docs are disabled for security.
-
-Key endpoints:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/v1/auth/login` | Obtain JWT tokens |
-| POST | `/api/v1/auth/register` | Create new account |
-| GET | `/api/v1/projects` | List projects |
-| POST | `/api/v1/projects` | Create / import project |
-| POST | `/api/v1/analyses` | Start an analysis run |
-| GET | `/api/v1/analyses/{id}/status` | Poll analysis progress |
-| GET | `/api/v1/reports/{id}/pdf` | Download PDF report |
-| GET | `/api/v1/dashboard/summary` | Dashboard KPIs |
+**🔐 Auth & authorization:** JWT access/refresh tokens, bcrypt-hashed passwords, RBAC middleware gating every mutating/analysis route.
 
 ---
 
-## 🛡️ Security
+## 8. 🛠️ Technology Stack
 
-- 🔐 JWT authentication with refresh tokens (bcrypt passwords, cost factor 12)
-- 👥 Role-based access control (Admin / Reviewer / Viewer)
-- 🛑 Rate limiting (sliding-window, per-user/per-IP)
-- 🪵 Audit log for every privileged action
-- 🧼 PII / secret redaction in all log output
-- 🔒 File-type and size validation on uploads
-- 🛡️ Zip-slip and tar-slip protection on archive extraction
-- 🌱 All secrets via environment variables — never hardcoded
+### ⚙️ Backend
+| Tech | Purpose |
+|---|---|
+| 🚀 FastAPI (0.115) | Async Python web framework |
+| 🗄️ SQLAlchemy (2.0) + Alembic | ORM and migrations |
+| ✅ Pydantic v2 / pydantic-settings | Request/response validation and config |
+| 🔑 PyJWT + bcrypt | Authentication |
+| 🌐 httpx | Async HTTP client (Ollama + GitHub API) |
+| 🧠 ChromaDB + onnxruntime | Vector store for RAG embeddings |
+| 📑 ReportLab | PDF report generation |
+| 🔁 tenacity | Retry logic |
+| 🧪 pytest / pytest-asyncio / pytest-cov | Testing |
+| 🦙 Ollama | Local LLM inference (`gemma2:2b`, `qwen2.5-coder:7b`) |
+
+### 🖥️ Frontend
+| Tech | Purpose |
+|---|---|
+| ⚛️ Next.js 15 / React 19 / TypeScript | Core framework |
+| 🎨 Tailwind CSS + CVA + tailwind-merge | Styling |
+| 🧱 Radix UI | Dialog, dropdown, select, tabs, toast, tooltip primitives |
+| 🎬 Framer Motion | Animation |
+| 📈 Recharts | Dashboard charts |
+| 🖍️ react-syntax-highlighter | Code display |
+| 🧪 Vitest + Testing Library | Frontend tests |
+
+### 🏗️ Infrastructure
+| Tech | Purpose |
+|---|---|
+| 🐳 Docker / docker-compose | Containerized backend, frontend, Ollama service |
+| 🔄 GitHub Actions | CI (backend + frontend jobs) |
+| 🗃️ SQLite (default) | Swappable via `DATABASE_URL` |
 
 ---
 
-## 🗺️ Roadmap
+## 9. 🌍 Real-World Use Cases
 
-- [ ] WebSocket streaming for live agent progress
-- [ ] Redis-backed rate limiter for multi-worker deployments
-- [ ] Multi-repo batch analysis
-- [ ] Self-hosted runner for CI integrations
-- [ ] VS Code extension
-- [ ] Slack & Teams notifications
-- [ ] SBOM generation
-- [ ] Auto-PR creation on GitHub
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Commit with Conventional Commits: `git commit -m "feat: add streaming progress"`
-4. Push and open a Pull Request
-
-Please run `pytest` (backend) and `npm run test && npm run lint` (frontend) before submitting.
+1. 🔀 **Pre-merge PR triage** — automated multi-dimensional pass before a human reviewer looks at it.
+2. 🗺️ **Legacy codebase onboarding** — use RAG chat + UML agent to quickly understand architecture and hotspots.
+3. 🛡️ **Security baseline for acquired/inherited code** — immediate security + dependency risk baseline without a lengthy manual audit.
+4. 📦 **Continuous dependency hygiene** — scheduled runs to catch drift/vulnerabilities before they become incidents.
+5. 📚 **Documentation debt remediation** — close gaps on undocumented/undertested modules incrementally.
+6. 📋 **Compliance-adjacent evidence generation** — exportable PDF reports for audits, without exposing source to a third-party SaaS.
+7. 🎓 **Educational / code-review training tool** — findings + chat explanations as a guided tour of senior-level review.
 
 ---
 
-## 📄 License
+## 10. 🚀 Future Roadmap
 
-MIT © 2026 CodeGuardian AI Contributors. See [LICENSE](LICENSE).
+### 🔧 Near-term hardening
+- ✅ CI-verified build/test pass on every PR as a merge gate
+- 🔁 Multi-worker-safe rate limiting (shared store like Redis)
+- 🎟️ Self-service invite/approval flow for role promotion
 
-> *"An AI that reviews your code the way a Staff Engineer would — tirelessly, consistently, and at scale."*
-#   C o d e G u a r d i a n A I  
- 
+### 🤖 Agent capability
+- 🤝 Cross-agent consensus/conflict resolution
+- 🔄 Incremental/differential analysis (diff-only re-analysis)
+- 🎯 Confidence-calibrated auto-fix (auto-apply vs. suggestion-only)
+- 🔌 Pluggable LLM backends beyond Ollama (opt-in hosted models)
+
+### 🏢 Platform
+- 🔗 Native GitHub/GitLab App integration (PR status checks, inline comments)
+- 📈 Team-level dashboards and health-score trend tracking
+- 🪝 Webhook-based CI triggering on push
+- 🏘️ Fine-grained per-project roles (today's RBAC is instance-wide)
+
+### 📡 Scale
+- 🐘 Move from SQLite to Postgres for multi-user deployments
+- ⚙️ Horizontal scaling of the analysis runner via a proper task queue (Celery/RQ)
+
+---
+
+<div align="center">
+
+**🛡️ CodeGuardian AI** — *nine experts, working in parallel, so your codebase doesn't have to wait.*
+
+</div>
