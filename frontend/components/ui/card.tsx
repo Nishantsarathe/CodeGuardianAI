@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export function Card({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
@@ -29,7 +29,11 @@ export function CardContent({ children, className }: { children: React.ReactNode
   return <div className={cn("p-6", className)}>{children}</div>;
 }
 
-export function Glass({ className, children, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
+export function Glass({
+  className,
+  children,
+  ...rest
+}: HTMLMotionProps<"div">) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
